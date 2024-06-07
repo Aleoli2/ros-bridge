@@ -1,0 +1,27 @@
+<!-- -->
+<launch>
+  <!-- Ego vehicle -->
+  <arg name='role_name' default='base_link'/>
+  <arg name="vehicle_filter" default='blue'/>
+  <!-- Right hand in ROS (change sign of Y axis) -->
+  <!-- use comma separated format "x,y,z,roll,pitch,yaw" -->
+  <!-- <arg name="spawn_point" default="136, 181, 2.0,0.0,360.0,-270.0"/> -->
+  <arg name="map" default=""/>
+  <arg name="way" default="" />
+
+  <include file="$(find carla_ros_bridge)/launch/carla_ros_bridge.launch" pass_all_args="true">
+    <arg name='ego_vehicle_role_name' value='$(arg role_name)'/>
+  </include>
+ <node pkg="carla_ackermann_control" type="carla_ackermann_control_aurova.py" name="carla_ackermann_control_$(arg role_name)" output="screen">
+    <param name="role_name" value="$(arg role_name)" />
+  </node>
+   <!-- the ego vehicle, that will be controlled by an agent (e.g. carla_ad_agent) -->
+  <include file="$(find carla_spawn_objects)/launch/carla_example_ego_vehicle.launch">
+    <arg name="objects_definition_file" value='$(find carla_spawn_objects)/config/blue.json'/>
+    <arg name='role_name' value='$(arg role_name)'/>
+    <!-- <arg name="spawn_point_ego_vehicle" value="$(arg spawn_point)"/> -->
+    <arg name="spawn_sensors_only" value="false"/>
+    <arg name="map" value="$(arg map)" />
+    <arg name="way" value="$(arg way)" />
+  </include>
+</launch>

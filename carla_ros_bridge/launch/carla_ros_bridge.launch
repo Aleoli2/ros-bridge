@@ -6,7 +6,7 @@
   <!-- the network connection for the python connection to CARLA -->
   <arg name='host' default='localhost'/>
   <arg name='port' default='2000'/>
-  <arg name='timeout' default='2'/>
+  <arg name='timeout' default='10'/>
   <!-- 
     enable/disable synchronous mode. If enabled ros-bridge waits until
     expected data is received for all sensors
@@ -15,8 +15,8 @@
   <arg name='synchronous_mode' default='True'/>
   <arg name='synchronous_mode_wait_for_vehicle_control_command' default='False'/>
   <!-- set the fixed timestep length -->
-  <arg name='fixed_delta_seconds' default='0.05'/>
-  <arg name='town' default='Town01'/>
+  <arg name='fixed_delta_seconds' default='0.1'/>
+  <arg name='town' default=''/>
   <!-- enable/disable the registration of all sensors. If disabled, only sensors
   spawned by the bridge are registered -->
   <arg name='register_all_sensors' default='True'/>

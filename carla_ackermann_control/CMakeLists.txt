@@ -18,6 +18,7 @@ catkin_package()
 
 install(PROGRAMS src/carla_ackermann_control/carla_ackermann_control_node.py
                  src/carla_ackermann_control/carla_control_physics.py
+                 src/carla_ackermann_control/carla_ackermann_control_aurova.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(DIRECTORY launch/

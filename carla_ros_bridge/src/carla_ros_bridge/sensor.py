@@ -95,6 +95,7 @@ class Sensor(Actor):
         self.sensor_tick_time = None
         self.is_event_sensor = is_event_sensor
         self._callback_active = Lock()
+        self.warning_flag=False
         try:
             self.sensor_tick_time = float(carla_actor.attributes["sensor_tick"])
             node.logdebug("Sensor tick time is {}".format(self.sensor_tick_time))
@@ -205,11 +206,12 @@ class Sensor(Actor):
         while True:
             try:
                 carla_sensor_data = self.queue.get(block=False)
-                if carla_sensor_data.frame != frame:
+                if not self.warning_flag and carla_sensor_data.frame != frame:
                     self.node.logwarn("{}({}): Received event for frame {}"
-                                      " (expected {}). Process it anyways.".format(
+                                      " (expected {}). Process it anyways. The warning will not be shown again".format(
                                           self.__class__.__name__, self.get_id(),
                                           carla_sensor_data.frame, frame))
+                    self.warning_flag=True
                 self.node.logdebug("{}({}): process {}".format(
                     self.__class__.__name__, self.get_id(), frame))
                 self.publish_tf(trans.carla_transform_to_ros_pose(

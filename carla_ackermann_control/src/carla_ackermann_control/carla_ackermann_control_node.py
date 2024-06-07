@@ -55,12 +55,12 @@ class CarlaAckermannControl(CompatibleNode):
         # To prevent "float division by zero" within PID controller initialize it with
         # a previous point in time (the error happens because the time doesn't
         # change between initialization and first call, therefore dt is 0)
-        sys.modules['simple_pid.PID']._current_time = (       # pylint: disable=protected-access
+        sys.modules['simple_pid.pid']._current_time = (       # pylint: disable=protected-access
             lambda: self.get_time() - 0.1)
 
         # we might want to use a PID controller to reach the final target speed
-        self.speed_controller = PID(Kp=self.get_param("speed_Kp", alternative_value=0.05),
-                                    Ki=self.get_param("speed_Ki", alternative_value=0.),
+        self.speed_controller = PID(Kp=self.get_param("speed_Kp", alternative_value=2.0),
+                                    Ki=self.get_param("speed_Ki", alternative_value=0.5),
                                     Kd=self.get_param("speed_Kd", alternative_value=0.5),
                                     sample_time=0.05,
                                     output_limits=(-1., 1.))
@@ -71,7 +71,7 @@ class CarlaAckermannControl(CompatibleNode):
                                     output_limits=(-1, 1))
 
         # use the correct time for further calculations
-        sys.modules['simple_pid.PID']._current_time = (       # pylint: disable=protected-access
+        sys.modules['simple_pid.pid']._current_time = (       # pylint: disable=protected-access
             lambda: self.get_time())
 
         if ROS_VERSION == 1:
@@ -486,7 +486,7 @@ class CarlaAckermannControl(CompatibleNode):
 
         # the driving impedance moves the 'zero' acceleration border
         # Interpretation: To reach a zero acceleration the throttle has to pushed
-        # down for a certain amount
+        # down for a certain amountcurrent.speed
         self.info.status.throttle_lower_border = phys.get_vehicle_driving_impedance_acceleration(
             self.vehicle_info, self.vehicle_status, self.info.output.reverse)
 
@@ -496,7 +496,9 @@ class CarlaAckermannControl(CompatibleNode):
         self.info.status.brake_upper_border = self.info.status.throttle_lower_border + \
             phys.get_vehicle_lay_off_engine_acceleration(self.vehicle_info)
 
-        if self.info.status.accel_control_pedal_target > self.info.status.throttle_lower_border:
+        control_gear = -1 if self.vehicle_status.control.reverse else 1
+        if ((self.info.target.speed-self.info.current.speed)*control_gear>0 and
+             self.info.status.accel_control_pedal_target > self.info.status.throttle_lower_border):
             self.info.status.status = "accelerating"
             self.info.output.brake = 0.0
             # the value has to be normed to max_pedal
@@ -508,7 +510,9 @@ class CarlaAckermannControl(CompatibleNode):
                 (self.info.status.accel_control_pedal_target -
                  self.info.status.throttle_lower_border) /
                 abs(self.info.restrictions.max_pedal))
-        elif self.info.status.accel_control_pedal_target > self.info.status.brake_upper_border:
+        #The controller doesn't handle correctly when it has to break. Use diference in the target and current speed.
+        # elif self.info.status.accel_control_pedal_target > self.info.status.brake_upper_border:
+        elif (self.info.target.speed-self.info.current.speed)*control_gear>-0.7 and self.info.target.speed!=0: 
             self.info.status.status = "coasting"
             # no control required
             self.info.output.brake = 0.0
@@ -516,10 +520,11 @@ class CarlaAckermannControl(CompatibleNode):
         else:
             self.info.status.status = "braking"
             # braking required
-            self.info.output.brake = (
-                (self.info.status.brake_upper_border -
-                 self.info.status.accel_control_pedal_target) /
-                abs(self.info.restrictions.max_pedal))
+            # self.info.output.brake = (
+            #     (self.info.status.brake_upper_border -
+            #      self.info.status.accel_control_pedal_target) /
+            #     abs(self.info.restrictions.max_pedal))
+            self.info.output.brake = 0.1
             self.info.output.throttle = 0.0
 
         # finally clip the final control output (should actually never happen)
@@ -551,6 +556,7 @@ class CarlaAckermannControl(CompatibleNode):
         current_time_sec = self.get_time()
         delta_time = current_time_sec - self.info.current.time_sec
         current_speed = self.vehicle_status.velocity
+        if self.vehicle_status.control.reverse : current_speed*=-1
         if delta_time > 0:
             delta_speed = current_speed - self.info.current.speed
             current_accel = delta_speed / delta_time

@@ -20,6 +20,7 @@ import math
 import os
 
 from transforms3d.euler import euler2quat
+import xml.etree.ElementTree as ET
 
 import ros_compatibility as roscomp
 from ros_compatibility.exceptions import *
@@ -138,35 +139,49 @@ class CarlaSpawnObjects(CompatibleNode):
 
                 spawn_point = None
 
-                # check if there's a spawn_point corresponding to this vehicle
-                spawn_point_param = self.get_param("spawn_point_" + vehicle["id"], None)
-                spawn_param_used = False
-                if (spawn_point_param is not None):
-                    # try to use spawn_point from parameters
-                    spawn_point = self.check_spawn_point_param(spawn_point_param)
-                    if spawn_point is None:
-                        self.logwarn("{}: Could not use spawn point from parameters, ".format(vehicle["id"]) +
-                                     "the spawn point from config file will be used.")
-                    else:
-                        self.loginfo("Spawn point from ros parameters")
-                        spawn_param_used = True
+                # check if there's a map with the spawn node
+                way = self.get_param("way", None)
+                map = self.get_param("map", "")
+                if way !=  "" and map !=  "":
+                    map, _=self.ReadRouteFromXML(map,way)
+                    spawn_node=map["way"][0]
+                    spawn_point = self.create_spawn_point(
+                        map["nodes"][spawn_node][0]-1.0*math.cos(-map["nodes"][spawn_node][5]),
+                        -map["nodes"][spawn_node][1]-1.0*math.sin(-map["nodes"][spawn_node][5]),
+                        map["nodes"][spawn_node][2]+1.0,
+                        map["nodes"][spawn_node][3],
+                        map["nodes"][spawn_node][4],
+                        -map["nodes"][spawn_node][5]
+                    )
+                else:
+                    # check if there's a spawn_point corresponding to this vehicle
+                    spawn_point_param = self.get_param("spawn_point_" + vehicle["id"], "")
+                    spawn_param_used = False
+                    if (spawn_point_param != ""):
+                        # try to use spawn_point from parameters
+                        spawn_point = self.check_spawn_point_param(spawn_point_param)
+                        if spawn_point is None:
+                            self.logwarn("{}: Could not use spawn point from parameters, ".format(vehicle["id"]) +
+                                        "the spawn point from config file will be used.")
+                        else:
+                            self.loginfo("Spawn point from ros parameters")
+                            spawn_param_used = True
 
-                if "spawn_point" in vehicle and spawn_param_used is False:
-                    # get spawn point from config file
-                    try:
-                        spawn_point = self.create_spawn_point(
-                            vehicle["spawn_point"]["x"],
-                            vehicle["spawn_point"]["y"],
-                            vehicle["spawn_point"]["z"],
-                            vehicle["spawn_point"]["roll"],
-                            vehicle["spawn_point"]["pitch"],
-                            vehicle["spawn_point"]["yaw"]
-                        )
-                        self.loginfo("Spawn point from configuration file")
-                    except KeyError as e:
-                        self.logerr("{}: Could not use the spawn point from config file, ".format(vehicle["id"]) +
-                                    "the mandatory attribute {} is missing, a random spawn point will be used".format(e))
-
+                    if "spawn_point" in vehicle and spawn_param_used is False:
+                        # get spawn point from config file
+                        try:
+                            spawn_point = self.create_spawn_point(
+                                vehicle["spawn_point"]["x"],
+                                vehicle["spawn_point"]["y"],
+                                vehicle["spawn_point"]["z"],
+                                vehicle["spawn_point"]["roll"],
+                                vehicle["spawn_point"]["pitch"],
+                                vehicle["spawn_point"]["yaw"]
+                            )
+                            self.loginfo("Spawn point from configuration file")
+                        except KeyError as e:
+                            self.logerr("{}: Could not use the spawn point from config file, ".format(vehicle["id"]) +
+                                        "the mandatory attribute {} is missing, a random spawn point will be used".format(e))
                 if spawn_point is None:
                     # pose not specified, ask for a random one in the service call
                     self.loginfo("Spawn point selected at random")
@@ -276,6 +291,25 @@ class CarlaSpawnObjects(CompatibleNode):
                 self.logerr("Sensor rolename '{}' is only allowed to be used once. The second one will be ignored.".format(
                     sensor_id))
                 continue
+
+    def ReadRouteFromXML(self, filename, id_way=None):
+        tree= ET.parse(filename)
+        root = tree.getroot()
+        map={}
+        map["nodes"], map["way"]={},[]
+        for node in root.findall("node"):
+
+            map["nodes"][node.get("id")] = [float(node.get("pose_x")), float(node.get("pose_y")), float(node.get("pose_z",0)),
+                                            float(node.get("roll",0.0)), float(node.get("pitch",360.0)), float(node.get("yaw",-270.0))]
+        
+        route=root.find("way")
+        for route in root.iterfind("way"):
+            if id_way is None or id_way==int(route.get("id")):
+                weather = int(route.get("weather", default=6))
+                for child in route:
+                    map["way"].append(child.get("ref"))
+                return map, weather
+        raise Exception from None
 
     def create_spawn_point(self, x, y, z, roll, pitch, yaw):
         spawn_point = Pose()

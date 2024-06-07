@@ -8,7 +8,7 @@
   <!-- Ego vehicle -->
   <arg name='role_name' default='ego_vehicle'/>
   <arg name="vehicle_filter" default='vehicle.*'/>
-  <arg name="spawn_point" default=""/><!-- use comma separated format "x,y,z,roll,pitch,yaw" -->
+  <arg name="spawn_point" default="338.7,-226.8,2.0,0.0,360.0,-270.0"/><!-- use comma separated format "x,y,z,roll,pitch,yaw" -->
 
   <!-- Map to load on startup (either a predefined CARLA town (e.g. 'Town01'), or a OpenDRIVE map file) -->
   <arg name="town" default=''/>
@@ -18,7 +18,7 @@
 
   <!-- Synchronous mode-->
   <arg name='synchronous_mode_wait_for_vehicle_control_command' default='False'/>
-  <arg name='fixed_delta_seconds' default='0.05'/>
+  <arg name='fixed_delta_seconds' default='0.016'/>
 
 
   <include file="$(find carla_ros_bridge)/launch/carla_ros_bridge.launch">

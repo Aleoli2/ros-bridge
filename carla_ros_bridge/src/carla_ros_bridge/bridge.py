@@ -77,6 +77,7 @@ class CarlaRosBridge(CompatibleNode):
         self.shutdown = Event()
 
         self.carla_settings = carla_world.get_settings()
+        self.original_settings = carla_world.get_settings()
         if not self.parameters["passive"]:
             # workaround: settings can only applied within non-sync mode
             if self.carla_settings.synchronous_mode:
@@ -353,6 +354,7 @@ class CarlaRosBridge(CompatibleNode):
             self.actor_factory.thread.join()
         else:
             self.synchronous_mode_update_thread.join()
+        self.carla_world.apply_settings(self.original_settings)
         self.loginfo("Object update finished.")
         self.debug_helper.destroy()
         self.status_publisher.destroy()
@@ -413,7 +415,7 @@ def main(args=None):
 
         # check carla version
         dist = pkg_resources.get_distribution("carla")
-        if LooseVersion(dist.version) != LooseVersion(CarlaRosBridge.CARLA_VERSION):
+        if LooseVersion(dist.version) < LooseVersion(CarlaRosBridge.CARLA_VERSION):
             carla_bridge.logfatal("CARLA python module version {} required. Found: {}".format(
                 CarlaRosBridge.CARLA_VERSION, dist.version))
             sys.exit(1)
@@ -431,11 +433,13 @@ def main(args=None):
             if parameters["town"].endswith(".xodr"):
                 carla_bridge.loginfo(
                     "Loading opendrive world from file '{}'".format(parameters["town"]))
+                
                 with open(parameters["town"]) as od_file:
                     data = od_file.read()
                 carla_world = carla_client.generate_opendrive_world(str(data))
             else:
-                if carla_world.get_map().name != parameters["town"]:
+                map_name = carla_world.get_map().name.split("/")[-1]
+                if map_name != parameters["town"]:
                     carla_bridge.loginfo("Loading town '{}' (previous: '{}').".format(
                         parameters["town"], carla_world.get_map().name))
                     carla_world = carla_client.load_world(parameters["town"])

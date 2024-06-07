@@ -45,6 +45,7 @@ from carla_ros_bridge.traffic import Traffic, TrafficLight
 from carla_ros_bridge.traffic_lights_sensor import TrafficLightsSensor
 from carla_ros_bridge.vehicle import Vehicle
 from carla_ros_bridge.walker import Walker
+from carla_ros_bridge.walker_list_sensor import WalkerListSensor
 
 # to generate a random spawning position or vehicles
 import random
@@ -350,6 +351,10 @@ class ActorFactory(object):
                                  name=name,
                                  parent=parent,
                                  node=self.node)
+        
+        elif  type_id == "sensor.pseudo.walker_list":
+            actor = WalkerListSensor(uid, name, self.world,parent,
+                                        self.node)
 
         elif carla_actor.type_id.startswith('traffic'):
             if carla_actor.type_id == "traffic.traffic_light":
